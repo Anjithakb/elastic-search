@@ -1,0 +1,221 @@
+from re import search
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104
+105
+106
+107
+#!/usr/bin/env python3
+#-*- coding: utf-8 -*-
+
+import sys, time, io
+start_time = time.time()
+
+if sys.version[0] != "3":
+    print ("\nThis script requires Python 3")
+    print ("Please run the script using the 'python3' command.\n")
+    quit()
+
+try:
+    # import the Elasticsearch low-level client library
+    from elasticsearch import Elasticsearch
+
+    # import Pandas, JSON, and the NumPy library
+    import pandas, json
+    import numpy as np
+
+except ImportError as error:
+    print ("\nImportError:", error)
+    print ("Please use 'pip3' to install the necessary packages.")
+    quit()
+
+# create a client instance of the library
+print ("\ncreating client instance of Elasticsearch")
+elastic_client = Elasticsearch(hosts ="http://analytics.evmlabs.com:9002/")
+
+"""
+MAKE API CALL TO CLUSTER AND CONVERT
+THE RESPONSE OBJECT TO A LIST OF
+ELASTICSEARCH DOCUMENTS
+"""
+# total num of Elasticsearch documents to get with API call
+total_docs = 1000
+print ("\nmaking API call to Elasticsearch for", total_docs, "documents.")
+response = elastic_client.search(
+    index='ren*',
+    body={ "query": {
+    "bool": {
+      "must":[
+        {
+          "range":{
+            "@timestamp":{
+              "gte": "2021-05-27T00:00:00", "lte": "2021-05-27T23:59:00" }
+          }
+            },
+        {
+            "exists": {
+                "field": "active_time"
+
+            }
+        }
+
+],"must_not": [
+        {
+          "match": {
+            "user_name": "device_idle"
+          }
+        }
+      ]
+
+    }
+
+    }
+    },
+    size=total_docs
+)
+
+# grab list of docs from nested dictionary response
+print ("putting documents in a list")
+elastic_docs = response["hits"]["hits"]
+
+"""
+GET ALL OF THE ELASTICSEARCH
+INDEX'S FIELDS FROM _SOURCE
+"""
+#  create an empty Pandas DataFrame object for docs
+docs = pandas.DataFrame()
+
+# iterate each Elasticsearch doc in list
+print ("\ncreating objects from Elasticsearch data.")
+for num, doc in enumerate(elastic_docs):
+
+    # get _source data dict from document
+    source_data = doc["_source"]
+
+    # get _id from document
+    _id = doc["_id"]
+
+    # create a Series object from doc dict object
+    doc_data = pandas.Series(source_data, name = _id)
+
+    # append the Series object to the DataFrame object
+    docs = docs.append(doc_data)
+
+
+"""
+EXPORT THE ELASTICSEARCH DOCUMENTS PUT INTO
+PANDAS OBJECTS
+"""
+print ("\nexporting Pandas objects to different file types.")
+
+# export Elasticsearch documents to a CSV file
+docs.to_csv("objectrocket.csv", ",") # CSV delimited by commas
+
+# export Elasticsearch documents to CSV
+csv_export = docs.to_csv(sep=",") # CSV delimited by commas
+print ("\nCSV data:", csv_export)
+
+
+
